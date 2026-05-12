@@ -5,8 +5,10 @@ from app.modules.lojas.faturamento.router import router as faturamento_router
 from app.modules.chat.router import router as chat_router
 from app.modules.chat.dashboard_router import router as chat_dashboard_router
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="Grupo Solar Chatbot API", version="1.0.0")
+app.mount("/storage", StaticFiles(directory="storage"), name="storage")
 
 # routers
 app.include_router(faturamento_router)
@@ -16,6 +18,7 @@ app.include_router(chat_dashboard_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://chatbot.gruposolar.com.br",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],

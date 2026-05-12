@@ -4,6 +4,8 @@ import psycopg
 from dotenv import load_dotenv
 from datetime import datetime
 
+import time
+
 load_dotenv()
 
 DBMAKER_DSN = os.getenv("DBMAKER_DSN", "GRUPOSOLARDB")
@@ -56,7 +58,6 @@ WHERE
     AND "0031letbi" = 'V'
 """
 
-
 INSERT_POSTGRES = """
 INSERT INTO faturamento_loja (
     data_emissao,
@@ -90,39 +91,40 @@ VALUES (
 )
 """
 
+def log(msg: str):
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
+
 
 def main():
-    print("Conectando ao DBMaker...")
+    inicio = time.time()
+
+    log("Iniciando importação de faturamento_loja")
 
     dbmaker_conn = pyodbc.connect(
         f"DSN={DBMAKER_DSN};UID={DBMAKER_USER};PWD={DBMAKER_PASSWORD}"
     )
-
-    print("Conectando ao PostgreSQL...")
 
     pg_conn = psycopg.connect(DATABASE_URL)
 
     src = dbmaker_conn.cursor()
     dst = pg_conn.cursor()
 
-    print("Executando query no DBMaker...")
     src.execute(QUERY_DBMAKER)
 
     total = 0
 
-    print("Importando dados para faturamento_loja...")
-
     for row in src.fetchall():
         row = list(row)
+
         data_str = str(row[0]).zfill(8)
         row[0] = datetime.strptime(data_str, "%d%m%Y").date()
+
         dst.execute(INSERT_POSTGRES, tuple(row))
 
         total += 1
 
         if total % 1000 == 0:
             pg_conn.commit()
-            print(f"{total} registros importados...")
 
     pg_conn.commit()
 
@@ -131,8 +133,9 @@ def main():
     dbmaker_conn.close()
     pg_conn.close()
 
-    print(f"Importação concluída. Total: {total} registros.")
+    tempo = round(time.time() - inicio, 2)
 
+    log(f"Importação concluída com sucesso: {total:,} registros em {tempo}s")
 
 if __name__ == "__main__":
     main()

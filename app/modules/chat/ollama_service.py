@@ -29,14 +29,21 @@ Resposta final:
                 "model": MODEL,
                 "prompt": prompt,
                 "stream": False,
+                "options": {
+                    "num_predict": 120,
+                    "temperature": 0.2,
+                },
             },
-            timeout=30,
+            timeout=8,
         )
 
         response.raise_for_status()
 
         data = response.json()
-        return data.get("response", resposta_base).strip() or resposta_base
+        resposta = data.get("response", "").strip()
 
-    except Exception:
+        return resposta or resposta_base
+
+    except Exception as e:
+        print(f"[OLLAMA FALLBACK] {e}")
         return resposta_base
