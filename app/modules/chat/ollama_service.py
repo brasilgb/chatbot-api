@@ -35,6 +35,9 @@ def reescrever_resposta(pergunta: str, resposta_base: str) -> str:
     if not resposta_base or not resposta_base.strip():
         return resposta_base
 
+    if not settings.ollama_rewrite_enabled:
+        return resposta_base
+
     try:
         response = requests.post(
             _ollama_generate_url(),
@@ -57,9 +60,9 @@ def reescrever_resposta(pergunta: str, resposta_base: str) -> str:
 
         return resposta or resposta_base
 
-    except requests.RequestException:
-        logger.exception("Falha ao consultar Ollama; usando resposta base.")
+    except requests.RequestException as exc:
+        logger.warning("Falha ao consultar Ollama (%s); usando resposta base.", exc)
         return resposta_base
-    except ValueError:
-        logger.exception("Ollama retornou JSON inválido; usando resposta base.")
+    except ValueError as exc:
+        logger.warning("Ollama retornou JSON inválido (%s); usando resposta base.", exc)
         return resposta_base
