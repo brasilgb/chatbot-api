@@ -2,18 +2,22 @@ import requests
 from app.core.config import settings
 
 
-OLLAMA_URL = getattr(settings, "ollama_url", "http://127.0.0.1:11434")
-EMBEDDING_MODEL = getattr(settings, "embedding_model", "nomic-embed-text")
+def _ollama_embed_url() -> str:
+    return f"{settings.ollama_base_url.rstrip('/')}/api/embed"
 
 
 def gerar_embedding(texto: str) -> list[float]:
+    texto = texto.strip()
+    if not texto:
+        raise ValueError("Texto vazio não pode gerar embedding.")
+
     response = requests.post(
-        f"{OLLAMA_URL}/api/embed",
+        _ollama_embed_url(),
         json={
-            "model": EMBEDDING_MODEL,
+            "model": settings.ollama_embed_model,
             "input": texto,
         },
-        timeout=30,
+        timeout=settings.ollama_timeout_seconds,
     )
 
     response.raise_for_status()

@@ -1,11 +1,19 @@
+import logging
+
 from fastapi import FastAPI
 
+from app.core.config import settings
 from app.core.database import test_connection
 from app.modules.lojas.faturamento.router import router as faturamento_router
 from app.modules.chat.router import router as chat_router
 from app.modules.chat.dashboard_router import router as chat_dashboard_router
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
+logging.basicConfig(
+    level=logging.INFO if settings.app_env == "production" else logging.DEBUG,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
 
 app = FastAPI(title="Grupo Solar Chatbot API", version="1.0.0")
 app.mount("/storage", StaticFiles(directory="storage"), name="storage")
@@ -17,11 +25,7 @@ app.include_router(chat_dashboard_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://chatbot.gruposolar.com.br",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

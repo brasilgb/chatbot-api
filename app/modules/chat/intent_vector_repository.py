@@ -67,11 +67,11 @@ def buscar_intent_por_embedding(
             tipo,
             departamento,
             intent,
-            1 - (embedding <=> :embedding) AS similaridade
+            1 - (embedding <=> CAST(:embedding AS vector)) AS similaridade
         FROM chat_intent_embeddings
         WHERE ativo = true
         {where_departamento}
-        ORDER BY embedding <=> :embedding
+        ORDER BY embedding <=> CAST(:embedding AS vector)
         LIMIT :limite
     """)
 

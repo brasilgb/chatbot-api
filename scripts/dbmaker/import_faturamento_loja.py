@@ -1,22 +1,27 @@
 import os
+import sys
+import time
+from contextlib import closing
+from datetime import date, datetime
+
 import pyodbc
 import psycopg
 from dotenv import load_dotenv
-from datetime import datetime
-
-import time
 
 load_dotenv()
 
 DBMAKER_DSN = os.getenv("DBMAKER_DSN", "GRUPOSOLARDB")
 DBMAKER_USER = os.getenv("DBMAKER_USER", "SYSADM")
 DBMAKER_PASSWORD = os.getenv("DBMAKER_PASSWORD", "")
+IMPORT_YEAR = int(os.getenv("IMPORT_YEAR", "2026"))
+IMPORT_DEPARTMENT = os.getenv("IMPORT_DEPARTMENT")
+BATCH_SIZE = int(os.getenv("IMPORT_BATCH_SIZE", "1000"))
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").replace(
     "postgresql+psycopg://", "postgresql://"
 )
 
-QUERY_DBMAKER = """
+QUERY_DBMAKER = f"""
 SELECT 
     "1051datem", 
     "1051depto", 
@@ -54,9 +59,12 @@ INNER JOIN A_ITE018
 INNER JOIN A_cli017 
     ON "0171CODCL" = FIX("1053CODCL" / 10)
 WHERE 
-    "1052anoem" = 2026 
+    "1052anoem" = {IMPORT_YEAR}
     AND "0031letbi" = 'V'
 """
+
+if IMPORT_DEPARTMENT:
+    QUERY_DBMAKER += f'\n    AND "1051depto" = {int(IMPORT_DEPARTMENT)}'
 
 INSERT_POSTGRES = """
 INSERT INTO faturamento_loja (
@@ -91,51 +99,86 @@ VALUES (
 )
 """
 
+DELETE_POSTGRES = """
+DELETE FROM faturamento_loja
+WHERE EXTRACT(YEAR FROM data_emissao) = %s
+"""
+
+if IMPORT_DEPARTMENT:
+    DELETE_POSTGRES += " AND departamento = %s"
+
+
 def log(msg: str):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
 
 
+def parse_dbmaker_date(value) -> date:
+    data_str = str(value).zfill(8)
+    return datetime.strptime(data_str, "%d%m%Y").date()
+
+
+def validate_config():
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL nao configurada.")
+
+    if BATCH_SIZE <= 0:
+        raise RuntimeError("IMPORT_BATCH_SIZE deve ser maior que zero.")
+
+
 def main():
     inicio = time.time()
+    validate_config()
 
-    log("Iniciando importação de faturamento_loja")
+    escopo = f"ano={IMPORT_YEAR}"
+    if IMPORT_DEPARTMENT:
+        escopo += f", departamento={IMPORT_DEPARTMENT}"
 
-    dbmaker_conn = pyodbc.connect(
-        f"DSN={DBMAKER_DSN};UID={DBMAKER_USER};PWD={DBMAKER_PASSWORD}"
-    )
+    log(f"Iniciando importacao de faturamento_loja ({escopo})")
 
-    pg_conn = psycopg.connect(DATABASE_URL)
+    with closing(
+        pyodbc.connect(f"DSN={DBMAKER_DSN};UID={DBMAKER_USER};PWD={DBMAKER_PASSWORD}")
+    ) as dbmaker_conn, closing(psycopg.connect(DATABASE_URL)) as pg_conn:
+        with closing(dbmaker_conn.cursor()) as src, closing(pg_conn.cursor()) as dst:
+            src.execute(QUERY_DBMAKER)
 
-    src = dbmaker_conn.cursor()
-    dst = pg_conn.cursor()
+            delete_params = [IMPORT_YEAR]
+            if IMPORT_DEPARTMENT:
+                delete_params.append(int(IMPORT_DEPARTMENT))
 
-    src.execute(QUERY_DBMAKER)
+            dst.execute(DELETE_POSTGRES, delete_params)
+            removidos = dst.rowcount
+            log(f"Registros antigos removidos no PostgreSQL: {removidos:,}")
 
-    total = 0
+            total = 0
 
-    for row in src.fetchall():
-        row = list(row)
+            while True:
+                rows = src.fetchmany(BATCH_SIZE)
+                if not rows:
+                    break
 
-        data_str = str(row[0]).zfill(8)
-        row[0] = datetime.strptime(data_str, "%d%m%Y").date()
+                batch = []
 
-        dst.execute(INSERT_POSTGRES, tuple(row))
+                for row in rows:
+                    row = list(row)
+                    row[0] = parse_dbmaker_date(row[0])
+                    batch.append(tuple(row))
 
-        total += 1
+                dst.executemany(INSERT_POSTGRES, batch)
+                total += len(batch)
 
-        if total % 1000 == 0:
+                if total % BATCH_SIZE == 0:
+                    log(f"{total:,} registros processados")
+
             pg_conn.commit()
-
-    pg_conn.commit()
-
-    src.close()
-    dst.close()
-    dbmaker_conn.close()
-    pg_conn.close()
 
     tempo = round(time.time() - inicio, 2)
 
-    log(f"Importação concluída com sucesso: {total:,} registros em {tempo}s")
+    log(f"Importacao concluida com sucesso: {total:,} registros em {tempo}s")
+
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as exc:
+        log(f"Falha na importacao: {exc}")
+        sys.exit(1)

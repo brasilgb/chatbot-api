@@ -95,9 +95,6 @@ def detectar_modulo(pergunta: str) -> str | None:
         if palavra in pergunta:
             score_faturamento += 1
 
-    print("PERGUNTA:", pergunta)
-    print("SCORE FATURAMENTO:", score_faturamento)
-
     if score_faturamento >= 3:
         return "faturamento"
 

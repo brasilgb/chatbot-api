@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime, timedelta
 
 from app.modules.chat.intent_parser import parse_intent
@@ -17,6 +18,8 @@ from app.modules.reports.table_image import gerar_tabela_ranking_vendedores
 from app.modules.lojas.faturamento.repository import get_faturamento_evolucao_periodo
 from app.modules.lojas.faturamento.service import montar_dados_evolucao
 from app.modules.reports.charts import gerar_grafico_evolucao_vendas
+
+logger = logging.getLogger(__name__)
 
 
 def formatar_data_br(data: str) -> str:
@@ -46,8 +49,8 @@ def finalizar_resposta(
 
     try:
         answer = reescrever_resposta(message, answer_base)
-    except Exception as e:
-        print(f"[IA DESATIVADA TEMPORARIAMENTE] {e}")
+    except Exception:
+        logger.exception("Falha inesperada ao reescrever resposta com IA.")
         answer = answer_base
 
     salvar_chat_log(
@@ -114,15 +117,15 @@ async def process_chat(message: str) -> dict:
                 departamento=departamento,
             )
 
-            print("INTENT VETORIAL:", intent_vetorial)
+            logger.debug("Intent vetorial detectada: %s", intent_vetorial)
 
             if intent_vetorial:
                 intent = intent_vetorial
                 departamento = intent.get("departamento") or departamento
                 source = "vetorial"
 
-        except Exception as e:
-            print(f"[ERRO VETORIZAÇÃO] {e}")
+        except Exception:
+            logger.exception("Erro ao detectar intent vetorial.")
 
     if intent.get("modulo") != "faturamento":
         answer = "Ainda não entendi essa pergunta."
@@ -144,33 +147,25 @@ async def process_chat(message: str) -> dict:
     data = intent.get("data")
     tipo = intent.get("tipo")
     departamento = intent.get("departamento") or departamento
-    print("INTENT:", intent)
-    print("TIPO:", tipo)
+    logger.debug("Intent final: %s", intent)
 
     if tipo == "evolucao":
-        print("ENTROU NO BLOCO EVOLUCAO")
-
         periodo = intent.get("periodo", "atual")
-        print("PERIODO:", periodo)
 
         inicio, fim = get_range_mes(periodo)
-        print("RANGE:", inicio, fim)
 
         rows = get_faturamento_evolucao_periodo(
             data_inicio=str(inicio),
             data_fim=str(fim),
             departamento=departamento,
         )
-        print("ROWS:", rows)
 
         dados = montar_dados_evolucao(rows)
-        print("DADOS:", dados)
 
         imagem = gerar_grafico_evolucao_vendas(
             dados,
             f"Evolução de Vendas - {inicio.strftime('%d/%m')} até {fim.strftime('%d/%m')}",
         )
-        print("IMAGE PATH:", imagem)
 
         return {
             "success": True,
@@ -244,7 +239,6 @@ async def process_chat(message: str) -> dict:
         return finalizar_resposta(message, intent, answer_base, source=source)
 
     if tipo == "vendedores":
-        print("ENTROU NO BLOCO VENDEDORES")
         rows = faturamento_vendedores(data, departamento)
 
         dados = montar_dados_ranking_vendedores(rows)

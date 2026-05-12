@@ -1,5 +1,8 @@
 import os
 from datetime import datetime
+
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
+
 import matplotlib.pyplot as plt
 
 

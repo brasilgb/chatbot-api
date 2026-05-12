@@ -11,7 +11,8 @@ SessionLocal = sessionmaker(
     bind=engine
 )
 
+
 def test_connection():
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT 1"))
-            return result.scalar() == 1
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT 1"))
+        return result.scalar() == 1
