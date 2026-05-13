@@ -1,4 +1,4 @@
-Faturamento Naturovos - Tabela A_BI040				
+#Faturamento Naturovos - Tabela A_BI029				
 Nome	Tipo	Tamanho	Pimary Key	
 BI029_DATACHAVE	integer		key	
 BI029_ATUALIZACAO	char	50		
@@ -23,7 +23,7 @@ BI029_PASSREPEC	decimal	13
 BI029_PASSMARGEMEC	decimal	13		
 BI029_MEDIADIA	decimal	13		
 
-Faturamento Lojas - Tabela A_007
+#Faturamento Lojas - Tabela A_007
 Nome	Tipo	Tamanho	Pimary Key
 BI007_DATACHAVE	integer		key
 BI007_ATUALIZACAO	char	30	
@@ -54,7 +54,7 @@ BI007_JURSPARCDIA	decimal	13
 BI007_PERFJURDIA	decimal	13	
 BI007_MEDIADIA	decimal	13	
 				
-Resumo Total Naturovos - Tabela A_BI037
+#Resumo Total Naturovos - Tabela A_BI037
 Nome	Tipo	Tamanho	Pimary Key
 BI037_DATACHAVE	integer		key
 BI037_DEPARTAMENTO	smallint		key
@@ -71,7 +71,7 @@ BI037_MARGSEMBR	decimal	13
 BI037_PRECOMEDSEMBR	decimal	13	
 BI037_VENDAAGORA	decimal	13					
 
-Resumo Total Lojas - Tabela BI040
+#Resumo Total Lojas - Tabela BI040
 Nome	Tipo	Tamanho
 BI040_DATACHAVE	integer	
 BI040_DEPARTAMENTO	smallint	
