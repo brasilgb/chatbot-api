@@ -1,8 +1,13 @@
 from app.modules.chat.parsers.date_parser import parse_data, parse_periodo
-
+from app.modules.chat.services.intent_vector_service import (
+    buscar_intent_semantica,
+)
 
 def detectar_departamento(message: str) -> tuple[int | None, str | None]:
     texto = message.lower()
+
+    if "grupo" in texto or "grupo solar" in texto:
+        return 0, "grupo"
 
     if "naturovos" in texto or "naturovo" in texto:
         return 5, "naturovos"
@@ -37,6 +42,7 @@ def detectar_tipo(message: str) -> str:
     return "ultimo"
 
 
+
 def parse_intent(message: str) -> dict:
     departamento, departamento_nome = detectar_departamento(message)
     tipo = detectar_tipo(message)
@@ -49,8 +55,31 @@ def parse_intent(message: str) -> dict:
         "tipo": tipo,
         "departamento": departamento,
         "departamento_nome": departamento_nome,
+        "departamento_explicito": departamento is not None,
         "data": data,
         "data_inicio": data_inicio,
         "data_fim": data_fim,
         "pergunta": message,
     }
+
+def parse_intent_hibrido(message: str) -> dict:
+    intent_regras = parse_intent(message)
+
+    intent_vetorial = buscar_intent_semantica(message)
+    
+
+    if not intent_vetorial:
+        intent_regras["origem"] = "regras"
+        return intent_regras
+
+    tipo_regras = intent_regras.get("tipo")
+    tipo_vetorial = intent_vetorial.get("tipo")
+
+    if tipo_vetorial and tipo_regras in ["ultimo", "resumo"]:
+        intent_regras["tipo"] = tipo_vetorial
+
+    intent_regras["origem"] = "hibrido"
+    intent_regras["score_vetorial"] = intent_vetorial.get("score")
+    intent_regras["pergunta_base"] = intent_vetorial.get("pergunta_base")
+
+    return intent_regras

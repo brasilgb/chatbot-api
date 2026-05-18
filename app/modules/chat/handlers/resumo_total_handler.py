@@ -58,7 +58,7 @@ def responder_resumo_total(intent: dict) -> str:
         )
 
         if lista:
-            if departamento:
+            if departamento is not None:
                 return formatar_resumo_total(lista[0])
 
             respostas = [formatar_resumo_total(item) for item in lista]

@@ -7,6 +7,8 @@ os.environ["ODBCINI"] = "/etc/odbc.ini"
 os.environ["ODBCSYSINI"] = "/etc"
 os.environ["DBMAKER"] = "/home/dbmaker/5.4"
 os.environ["DM_HOME"] = "/home/dbmaker/5.4"
+os.environ["DB_CLILCODE"] = "0"
+os.environ["DB_SVRCODE"] = "0"
 os.environ["LD_LIBRARY_PATH"] = "/home/dbmaker/5.4/lib/so:" + os.environ.get(
     "LD_LIBRARY_PATH", ""
 )
@@ -243,7 +245,10 @@ def preparar_linha(row, prefixo, departamento, departamento_nome, origem_tabela)
 
 
 def buscar_dados_dbmaker(query):
-    conn = pyodbc.connect(f"DSN={DSN}")
+    conn = pyodbc.connect(f"DSN={DSN}", ansi=True)
+    conn.setdecoding(pyodbc.SQL_CHAR, encoding="latin1")
+    conn.setdecoding(pyodbc.SQL_WCHAR, encoding="utf-16le")
+    conn.setencoding(encoding="latin1")
     cursor = conn.cursor()
 
     try:

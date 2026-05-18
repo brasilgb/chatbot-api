@@ -1,92 +1,216 @@
-from app.modules.chat.embedding_service import gerar_embedding
-from app.modules.chat.intent_vector_repository import salvar_intent_embedding
+from sqlalchemy import text
+
+from app.core.database import engine
+from app.rag.embeddings import gerar_embedding
 
 
 INTENTS = [
     {
-        "pergunta": "Qual foi o faturamento de ontem das lojas?",
+        "pergunta": "como foram as vendas hoje?",
         "intent": {
-            "modulo": "faturamento",
-            "tipo": "resumo",
+            "modulo": "resumo_total",
+            "tipo": "faturamento",
             "departamento": 1,
+            "departamento_nome": "lojas",
         },
     },
     {
-        "pergunta": "Me mostre o faturamento por filial das lojas ontem",
+        "pergunta": "quanto entrou hoje nas lojas?",
         "intent": {
-            "modulo": "faturamento",
+            "modulo": "resumo_total",
+            "tipo": "faturamento",
+            "departamento": 1,
+            "departamento_nome": "lojas",
+        },
+    },
+    {
+        "pergunta": "qual o faturamento de hoje?",
+        "intent": {
+            "modulo": "resumo_total",
+            "tipo": "faturamento",
+            "departamento": 1,
+            "departamento_nome": "lojas",
+        },
+    },
+    {
+        "pergunta": "qual foi o faturamento de ontem das lojas?",
+        "intent": {
+            "modulo": "resumo_total",
+            "tipo": "faturamento",
+            "departamento": 1,
+            "departamento_nome": "lojas",
+        },
+    },
+    {
+        "pergunta": "me mostre o faturamento por filial das lojas ontem",
+        "intent": {
+            "modulo": "resumo_total",
             "tipo": "filiais",
             "departamento": 1,
+            "departamento_nome": "lojas",
         },
     },
     {
-        "pergunta": "Ranking de vendedores das lojas ontem",
+        "pergunta": "ranking de vendedores das lojas ontem",
         "intent": {
-            "modulo": "faturamento",
+            "modulo": "resumo_total",
             "tipo": "vendedores",
             "departamento": 1,
+            "departamento_nome": "lojas",
         },
     },
     {
-        "pergunta": "Produtos mais vendidos nas lojas ontem",
+        "pergunta": "produtos mais vendidos nas lojas ontem",
         "intent": {
-            "modulo": "faturamento",
+            "modulo": "resumo_total",
             "tipo": "produtos",
             "departamento": 1,
+            "departamento_nome": "lojas",
         },
     },
     {
-        "pergunta": "Qual foi o faturamento de ontem da Naturovos?",
+        "pergunta": "me mostra a projeção das lojas",
         "intent": {
-            "modulo": "faturamento",
-            "tipo": "resumo",
+            "modulo": "resumo_total",
+            "tipo": "projecao",
+            "departamento": 1,
+            "departamento_nome": "lojas",
+        },
+    },
+    {
+        "pergunta": "me mostra a margem das lojas",
+        "intent": {
+            "modulo": "resumo_total",
+            "tipo": "margem",
+            "departamento": 1,
+            "departamento_nome": "lojas",
+        },
+    },
+    {
+        "pergunta": "evolução de vendas das lojas",
+        "intent": {
+            "modulo": "resumo_total",
+            "tipo": "evolucao",
+            "departamento": 1,
+            "departamento_nome": "lojas",
+        },
+    },
+
+    # Naturovos
+    {
+        "pergunta": "qual foi o faturamento de ontem da naturovos?",
+        "intent": {
+            "modulo": "resumo_total",
+            "tipo": "faturamento",
             "departamento": 5,
+            "departamento_nome": "naturovos",
         },
     },
     {
-        "pergunta": "Faturamento por filial da Naturovos",
+        "pergunta": "qual o faturamento da naturovos hoje?",
         "intent": {
-            "modulo": "faturamento",
+            "modulo": "resumo_total",
+            "tipo": "faturamento",
+            "departamento": 5,
+            "departamento_nome": "naturovos",
+        },
+    },
+    {
+        "pergunta": "me mostra a projeção da naturovos",
+        "intent": {
+            "modulo": "resumo_total",
+            "tipo": "projecao",
+            "departamento": 5,
+            "departamento_nome": "naturovos",
+        },
+    },
+    {
+        "pergunta": "faturamento por filial da naturovos",
+        "intent": {
+            "modulo": "resumo_total",
             "tipo": "filiais",
             "departamento": 5,
+            "departamento_nome": "naturovos",
         },
     },
     {
-        "pergunta": "Vendas por vendedor da Naturovos",
+        "pergunta": "vendas por vendedor da naturovos",
         "intent": {
-            "modulo": "faturamento",
+            "modulo": "resumo_total",
             "tipo": "vendedores",
             "departamento": 5,
+            "departamento_nome": "naturovos",
         },
     },
     {
-        "pergunta": "Produtos vendidos da Naturovos",
+        "pergunta": "produtos vendidos da naturovos",
         "intent": {
-            "modulo": "faturamento",
+            "modulo": "resumo_total",
             "tipo": "produtos",
             "departamento": 5,
+            "departamento_nome": "naturovos",
+        },
+    },
+    {
+        "pergunta": "me mostra a margem da naturovos",
+        "intent": {
+            "modulo": "resumo_total",
+            "tipo": "margem",
+            "departamento": 5,
+            "departamento_nome": "naturovos",
+        },
+    },
+    {
+        "pergunta": "evolução de vendas da naturovos",
+        "intent": {
+            "modulo": "resumo_total",
+            "tipo": "evolucao",
+            "departamento": 5,
+            "departamento_nome": "naturovos",
         },
     },
 ]
 
 
 def main():
-    for item in INTENTS:
-        pergunta = item["pergunta"]
-        intent = item["intent"]
-
-        embedding = gerar_embedding(pergunta)
-
-        salvar_intent_embedding(
-            pergunta_exemplo=pergunta,
-            modulo=intent["modulo"],
-            tipo=intent["tipo"],
-            departamento=intent["departamento"],
-            intent=intent,
-            embedding=embedding,
+    sql = text("""
+        INSERT INTO intent_embeddings (
+            pergunta,
+            modulo,
+            tipo,
+            departamento,
+            departamento_nome,
+            embedding,
+            ativo
         )
+        VALUES (
+            :pergunta,
+            :modulo,
+            :tipo,
+            :departamento,
+            :departamento_nome,
+            :embedding,
+            true
+        )
+    """)
 
-        print(f"OK: {pergunta}")
+    with engine.begin() as conn:
+        for item in INTENTS:
+            pergunta = item["pergunta"]
+            intent = item["intent"]
+
+            embedding = gerar_embedding(pergunta)
+
+            conn.execute(sql, {
+                "pergunta": pergunta,
+                "modulo": intent.get("modulo"),
+                "tipo": intent.get("tipo"),
+                "departamento": intent.get("departamento"),
+                "departamento_nome": intent.get("departamento_nome"),
+                "embedding": str(embedding),
+            })
+
+            print(f"OK: {pergunta}")
 
 
 if __name__ == "__main__":

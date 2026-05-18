@@ -1,0 +1,29 @@
+FROM fedora:43
+
+WORKDIR /app
+
+RUN dnf install -y \
+    python3 \
+    python3-pip \
+    python3-devel \
+    gcc \
+    gcc-c++ \
+    unixODBC \
+    unixODBC-devel \
+    && dnf clean all
+
+COPY requirements.txt .
+
+RUN pip3 install --no-cache-dir -r requirements.txt pyodbc
+
+COPY . .
+
+ENV PYTHONPATH=/app
+ENV DBMAKER=/home/dbmaker/5.4
+ENV DBMAKER_HOME=/home/dbmaker/5.4
+ENV DM_HOME=/home/dbmaker/5.4
+ENV ODBCINI=/etc/odbc.ini
+ENV ODBCSYSINI=/etc
+ENV LD_LIBRARY_PATH=/home/dbmaker/5.4/lib/so
+
+CMD ["python3", "scripts/dbmaker/import_resumo_total.py"]
