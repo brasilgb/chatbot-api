@@ -7,118 +7,68 @@ from app.modules.chat.handlers.resumo_total_handler import (
 SELECOES_PENDENTES = {}
 
 
+def gerar_opcoes_departamento() -> list[dict]:
+    return [
+        {"id": "1", "label": "Grupo", "value": "grupo", "message": "1"},
+        {"id": "2", "label": "Lojas", "value": "lojas", "message": "2"},
+        {"id": "3", "label": "Naturovos", "value": "naturovos", "message": "3"},
+    ]
+
+
 def precisa_selecionar_departamento(intent: dict) -> bool:
-    modulo = intent.get("modulo")
-    departamento = intent.get("departamento")
-
-    if modulo != "resumo_total":
-        return False
-
-    if departamento is None:
-        return True
-
-    return False
+    return intent.get("modulo") == "resumo_total" and intent.get("departamento") is None
 
 
 def responder_selecao_departamento(intent: dict, session_id: str = "default") -> dict:
-    pergunta = intent.get("pergunta") or ""
-
     SELECOES_PENDENTES[session_id] = {
         "tipo": "departamento",
-        "pergunta": pergunta,
+        "intent": intent,
     }
 
     return {
         "success": True,
         "type": "selection",
-        "answer": (
-            "Selecione uma opção:\n\n" "1️⃣ Grupo\n" "2️⃣ Lojas\n" "3️⃣ Naturovos"
-        ),
+        "answer": "Selecione uma opção:\n\n1️⃣ Grupo\n2️⃣ Lojas\n3️⃣ Naturovos",
         "intent": intent,
         "requires_selection": True,
         "selection_type": "departamento",
-        "options": [
-            {
-                "id": "1",
-                "label": "Grupo",
-                "value": "grupo",
-                "message": f"{pergunta} do grupo",
-            },
-            {
-                "id": "2",
-                "label": "Lojas",
-                "value": "lojas",
-                "message": f"{pergunta} das lojas",
-            },
-            {
-                "id": "3",
-                "label": "Naturovos",
-                "value": "naturovos",
-                "message": f"{pergunta} da naturovos",
-            },
-        ],
+        "options": gerar_opcoes_departamento(),
     }
 
 
-def resolver_selecao_pendente(message: str, session_id: str = "default") -> str | None:
+def resolver_selecao_pendente(message: str, session_id: str = "default"):
     pendente = SELECOES_PENDENTES.get(session_id)
     texto = message.strip().lower()
 
-    if not pendente:
-        if texto in ["1", "2", "3"]:
-            return "__SEM_CONTEXTO__"
-        return None
-
-    pergunta = pendente.get("pergunta")
-
     mapa = {
-        "1": "do grupo",
-        "grupo": "do grupo",
-        "2": "das lojas",
-        "lojas": "das lojas",
-        "loja": "das lojas",
-        "3": "da naturovos",
-        "naturovos": "da naturovos",
-        "naturovo": "da naturovos",
+        "1": (0, "Grupo"),
+        "grupo": (0, "Grupo"),
+        "2": (1, "Lojas"),
+        "lojas": (1, "Lojas"),
+        "loja": (1, "Lojas"),
+        "3": (5, "Naturovos"),
+        "naturovos": (5, "Naturovos"),
+        "naturovo": (5, "Naturovos"),
     }
 
-    complemento = mapa.get(texto)
+    if texto not in mapa:
+        return None
 
-    if not complemento:
-        SELECOES_PENDENTES.pop(session_id, None)
-        return "__OPCAO_INVALIDA__"
+    if not pendente:
+        return "__SEM_CONTEXTO__"
 
-    SELECOES_PENDENTES.pop(session_id, None)
+    departamento, departamento_nome = mapa[texto]
 
-    return f"{pergunta} {complemento}"
+    intent = pendente.get("intent", {}).copy()
+    intent["departamento"] = departamento
+    intent["departamento_nome"] = departamento_nome
+
+    # Não remove o contexto.
+    # Assim o usuário pode continuar clicando 1, 2 ou 3 para comparar.
+    return intent
 
 
-def processar_chat(message: str, session_id: str = "default"):
-
-    mensagem_resolvida = resolver_selecao_pendente(message, session_id)
-
-    if mensagem_resolvida == "__SEM_CONTEXTO__":
-        return {
-            "success": False,
-            "answer": "Não encontrei uma seleção pendente. Por favor, refaça a pergunta.",
-            "intent": None,
-        }
-
-    if mensagem_resolvida == "__OPCAO_INVALIDA__":
-        return {
-            "success": False,
-            "answer": "Opção inválida ou contexto expirado. Por favor, refaça a pergunta.",
-            "intent": None,
-        }
-
-    if mensagem_resolvida:
-        message = mensagem_resolvida
-
-    intent = parse_intent_hibrido(message)
-
-    if precisa_selecionar_departamento(intent):
-        return responder_selecao_departamento(intent, session_id)
-
+def responder_com_intent(intent: dict) -> dict:
     modulo = intent.get("modulo")
 
     if modulo == "resumo_total":
@@ -128,6 +78,7 @@ def processar_chat(message: str, session_id: str = "default"):
             "success": True,
             "answer": resposta,
             "intent": intent,
+            "options": gerar_opcoes_departamento(),
         }
 
     return {
@@ -135,3 +86,35 @@ def processar_chat(message: str, session_id: str = "default"):
         "answer": "Não consegui entender sua pergunta.",
         "intent": intent,
     }
+
+
+def processar_chat(message: str, session_id: str = "default"):
+    print("MESSAGE:", message)
+    print("SESSION_ID:", session_id)
+    print("SELECOES_PENDENTES:", SELECOES_PENDENTES)
+
+    selecao_resolvida = resolver_selecao_pendente(message, session_id)
+
+    if selecao_resolvida == "__SEM_CONTEXTO__":
+        return {
+            "success": False,
+            "answer": "Não encontrei uma seleção pendente. Por favor, refaça a pergunta.",
+            "intent": None,
+        }
+
+    if isinstance(selecao_resolvida, dict):
+        return responder_com_intent(selecao_resolvida)
+
+    intent = parse_intent_hibrido(message)
+
+    if precisa_selecionar_departamento(intent):
+        return responder_selecao_departamento(intent, session_id)
+
+    # Pergunta nova com departamento definido atualiza o contexto base.
+    if intent.get("modulo") == "resumo_total":
+        SELECOES_PENDENTES[session_id] = {
+            "tipo": "departamento",
+            "intent": intent,
+        }
+
+    return responder_com_intent(intent)

@@ -6,14 +6,14 @@ from app.modules.chat.services.intent_vector_service import (
 def detectar_departamento(message: str) -> tuple[int | None, str | None]:
     texto = message.lower()
 
-    if "grupo" in texto or "grupo solar" in texto:
-        return 0, "grupo"
+    if "grupo solar" in texto or "grupo" in texto:
+        return 0, "Grupo Solar"
 
     if "naturovos" in texto or "naturovo" in texto:
-        return 5, "naturovos"
+        return 5, "Naturovos"
 
     if "lojas" in texto or "loja" in texto:
-        return 1, "lojas"
+        return 1, "Lojas"
 
     return None, None
 

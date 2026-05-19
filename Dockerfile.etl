@@ -1,6 +1,6 @@
 FROM fedora:43
 
-WORKDIR /app
+WORKDIR /home/dbmaker/5.4
 
 RUN dnf install -y \
     python3 \
@@ -10,7 +10,10 @@ RUN dnf install -y \
     gcc-c++ \
     unixODBC \
     unixODBC-devel \
+    strace \
     && dnf clean all
+
+RUN ln -sf /home/dbmaker/5.4/lib/so/libiconv.so /libiconv.so || true
 
 COPY requirements.txt .
 
@@ -26,4 +29,5 @@ ENV ODBCINI=/etc/odbc.ini
 ENV ODBCSYSINI=/etc
 ENV LD_LIBRARY_PATH=/home/dbmaker/5.4/lib/so
 
-CMD ["python3", "scripts/dbmaker/import_resumo_total.py"]
+CMD ["sh", "-lc", "ln -sf /home/dbmaker/5.4/lib/so/libiconv.so /libiconv.so && cd /app && PYTHONPATH=/app python3 scripts/dbmaker/import_resumo_total.py"]
+

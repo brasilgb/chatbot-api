@@ -14,11 +14,19 @@ os.environ["LD_LIBRARY_PATH"] = "/home/dbmaker/5.4/lib/so:" + os.environ.get(
 )
 
 import pyodbc
+from dotenv import load_dotenv
 from sqlalchemy import text
 
 from app.core.database import engine
 
-DSN = os.getenv("DBMAKER_DSN", "QLICKDB")
+load_dotenv()
+
+DBMAKER_DSN = os.getenv("DBMAKER_DSN", "QLICKDB")
+DBMAKER_USER = os.getenv("DBMAKER_USER", "SYSADM")
+DBMAKER_PASSWORD = os.getenv("DBMAKER_PASSWORD", "")
+DBMAKER_HOST = os.getenv("DBMAKER_HOST", "172.16.1.85")
+DBMAKER_PORT = os.getenv("DBMAKER_PORT", "6525")
+DBMAKER_NAME = os.getenv("DBMAKER_NAME", "QLICKDB")
 
 
 QUERY_LOJAS = """
@@ -205,6 +213,10 @@ def get_value(row: dict, key: str):
     return row.get(key)
 
 
+def log(msg: str):
+    log(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
+
+
 def preparar_linha(row, prefixo, departamento, departamento_nome, origem_tabela):
     data_chave = parse_data_chave(get_value(row, f"{prefixo}_DATACHAVE"))
     data_referencia = parse_data_referencia(data_chave)
@@ -244,8 +256,43 @@ def preparar_linha(row, prefixo, departamento, departamento_nome, origem_tabela)
     }
 
 
+def conectar_dbmaker():
+    """
+    Tenta primeiro o DSN configurado no ODBC. Se o container nao tiver o
+    mesmo odbc.ini do host, usa uma string completa com host/porta/nome.
+    """
+
+    dsn_conn_str = f"DSN={DBMAKER_DSN};UID={DBMAKER_USER}"
+    if DBMAKER_PASSWORD:
+        dsn_conn_str += f";PWD={DBMAKER_PASSWORD}"
+
+    try:
+
+        return pyodbc.connect(dsn_conn_str, ansi=True, autocommit=True, timeout=30)
+
+    except Exception as exc:
+        log(f"Falha via DSN: {exc}")
+        log("Tentando conectar DBMaker com string completa...")
+
+        conn_str = (
+            "DRIVER=DBMAKER;"
+            f"database={DBMAKER_NAME};"
+            f"Host={DBMAKER_HOST};"
+            f"Port={DBMAKER_PORT};"
+            f"DB_PTNUM={DBMAKER_PORT};"
+            f"DB_SVADR={DBMAKER_HOST};"
+            f"DB_NAME={DBMAKER_NAME};"
+            f"UID={DBMAKER_USER}"
+        )
+
+        if DBMAKER_PASSWORD:
+            conn_str += f";PWD={DBMAKER_PASSWORD}"
+
+        return pyodbc.connect(conn_str, ansi=True, autocommit=True)
+
+
 def buscar_dados_dbmaker(query):
-    conn = pyodbc.connect(f"DSN={DSN}", ansi=True)
+    conn = conectar_dbmaker()
     conn.setdecoding(pyodbc.SQL_CHAR, encoding="latin1")
     conn.setdecoding(pyodbc.SQL_WCHAR, encoding="utf-16le")
     conn.setencoding(encoding="latin1")
@@ -278,7 +325,7 @@ def limpar_registros_invalidos():
 
 
 def importar_resumo_total():
-    print("Iniciando importação fato_resumo_total...")
+    log("Iniciando importação fato_resumo_total...")
     limpar_registros_invalidos()
 
     total_lidos = 0
@@ -304,12 +351,12 @@ def importar_resumo_total():
 
     with engine.begin() as conn:
         for carga in cargas:
-            print(f"Buscando dados: {carga['origem_tabela']}")
+            log(f"Buscando dados: {carga['origem_tabela']}")
 
             rows = buscar_dados_dbmaker(carga["query"])
             total_lidos += len(rows)
 
-            print(f"Linhas encontradas: {len(rows)}")
+            log(f"Linhas encontradas: {len(rows)}")
 
             for row in rows:
                 dados = preparar_linha(
@@ -327,10 +374,10 @@ def importar_resumo_total():
                 conn.execute(INSERT_SQL, dados)
                 total_importados += 1
 
-    print("Importação concluída.")
-    print(f"Total lidos: {total_lidos}")
-    print(f"Total importados/atualizados: {total_importados}")
-    print(f"Total ignorados: {total_ignorados}")
+    log("Importação concluída.")
+    log(f"Total lidos: {total_lidos}")
+    log(f"Total importados/atualizados: {total_importados}")
+    log(f"Total ignorados: {total_ignorados}")
 
 
 if __name__ == "__main__":

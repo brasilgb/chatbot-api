@@ -2,7 +2,17 @@ from sqlalchemy import text
 from app.core.database import engine
 
 
+DEPARTAMENTOS_GRUPO = (1, 5)
+
+
 def aplicar_filtro_departamento(sql: str, params: dict, departamento: int | None):
+    """
+    departamento:
+    - None = sem filtro / todos os departamentos gravados
+    - 0 = Grupo Solar = soma departamentos 1 e 5
+    - 1 = Lojas
+    - 5 = Naturovos
+    """
     if departamento is None:
         return sql, params
 
@@ -63,20 +73,26 @@ def get_resumo_por_data(data: str, departamento: int | None = None):
         sql = """
             SELECT
                 0 AS departamento,
+                'Grupo Solar' AS departamento_nome,
                 CAST(:data AS date) AS data_referencia,
                 MAX(atualizacao) AS atualizacao,
 
-                SUM(meta) AS meta,
-                SUM(faturamento) AS faturamento,
-                SUM(projecao) AS projecao,
-                SUM(venda_agora) AS venda_agora,
-                SUM(venda_dia) AS venda_dia,
-                SUM(juros_agora) AS juros_agora,
+                COALESCE(SUM(meta), 0) AS meta,
+                COALESCE(SUM(faturamento), 0) AS faturamento,
+                COALESCE(SUM(projecao), 0) AS projecao,
+                COALESCE(SUM(venda_agora), 0) AS venda_agora,
+                COALESCE(SUM(venda_dia), 0) AS venda_dia,
+                COALESCE(SUM(juros_agora), 0) AS juros_agora,
 
-                AVG(margem) AS margem,
-                CASE 
-                    WHEN SUM(meta) > 0 
-                    THEN SUM(faturamento) / SUM(meta) * 100
+                CASE
+                    WHEN COALESCE(SUM(faturamento), 0) > 0
+                    THEN COALESCE(SUM(faturamento * margem), 0) / SUM(faturamento)
+                    ELSE 0
+                END AS margem,
+
+                CASE
+                    WHEN COALESCE(SUM(meta), 0) > 0
+                    THEN COALESCE(SUM(faturamento), 0) / SUM(meta) * 100
                     ELSE 0
                 END AS meta_alcancada
             FROM fato_resumo_total
@@ -89,7 +105,16 @@ def get_resumo_por_data(data: str, departamento: int | None = None):
         with engine.connect() as conn:
             row = conn.execute(text(sql), params).mappings().first()
 
-        return [dict(row)] if row else []
+        if not row:
+            return []
+
+        resumo = dict(row)
+
+        # Evita retornar um "grupo vazio" quando não existe nenhum registro na data.
+        if resumo.get("atualizacao") is None:
+            return []
+
+        return [resumo]
 
     sql = """
         SELECT *
@@ -116,37 +141,91 @@ def get_resumo_periodo(
     data_fim: str,
     departamento: int | None = None,
 ):
+    if departamento == 0:
+        sql = """
+            SELECT
+                0 AS departamento,
+                'Grupo Solar' AS departamento_nome,
+                MIN(data_referencia) AS data_inicio,
+                MAX(data_referencia) AS data_fim,
+
+                COALESCE(SUM(meta), 0) AS meta,
+                COALESCE(SUM(faturamento), 0) AS faturamento,
+                COALESCE(SUM(projecao), 0) AS projecao,
+                COALESCE(SUM(venda_agora), 0) AS venda_agora,
+                COALESCE(SUM(venda_dia), 0) AS venda_dia,
+                COALESCE(SUM(juros_agora), 0) AS juros_agora,
+
+                CASE
+                    WHEN COALESCE(SUM(faturamento), 0) > 0
+                    THEN COALESCE(SUM(faturamento * margem), 0) / SUM(faturamento)
+                    ELSE 0
+                END AS margem,
+
+                CASE
+                    WHEN COALESCE(SUM(meta), 0) > 0
+                    THEN COALESCE(SUM(faturamento), 0) / SUM(meta) * 100
+                    ELSE 0
+                END AS meta_alcancada
+            FROM fato_resumo_total
+            WHERE data_referencia BETWEEN :data_inicio AND :data_fim
+            AND departamento IN (1, 5)
+        """
+
+        params = {
+            "data_inicio": data_inicio,
+            "data_fim": data_fim,
+        }
+
+        with engine.connect() as conn:
+            row = conn.execute(text(sql), params).mappings().first()
+
+        if not row:
+            return []
+
+        resumo = dict(row)
+
+        if resumo.get("data_inicio") is None:
+            return []
+
+        return [resumo]
+
     sql = """
         SELECT
-            CASE WHEN :departamento = 0 THEN 0 ELSE departamento END AS departamento,
+            departamento,
             MIN(data_referencia) AS data_inicio,
             MAX(data_referencia) AS data_fim,
 
-            SUM(meta) AS meta,
-            SUM(faturamento) AS faturamento,
-            SUM(venda_agora) AS venda_agora,
-            SUM(venda_dia) AS venda_dia,
-            SUM(juros_agora) AS juros_agora
+            COALESCE(SUM(meta), 0) AS meta,
+            COALESCE(SUM(faturamento), 0) AS faturamento,
+            COALESCE(SUM(projecao), 0) AS projecao,
+            COALESCE(SUM(venda_agora), 0) AS venda_agora,
+            COALESCE(SUM(venda_dia), 0) AS venda_dia,
+            COALESCE(SUM(juros_agora), 0) AS juros_agora,
 
+            CASE
+                WHEN COALESCE(SUM(faturamento), 0) > 0
+                THEN COALESCE(SUM(faturamento * margem), 0) / SUM(faturamento)
+                ELSE 0
+            END AS margem,
+
+            CASE
+                WHEN COALESCE(SUM(meta), 0) > 0
+                THEN COALESCE(SUM(faturamento), 0) / SUM(meta) * 100
+                ELSE 0
+            END AS meta_alcancada
         FROM fato_resumo_total
         WHERE data_referencia BETWEEN :data_inicio AND :data_fim
     """
 
     params = {
-    "data_inicio": data_inicio,
-    "data_fim": data_fim,
-    "departamento": departamento or 0,
-}
+        "data_inicio": data_inicio,
+        "data_fim": data_fim,
+    }
 
     sql, params = aplicar_filtro_departamento(sql, params, departamento)
 
-    if departamento == 0:
-        sql += """
-        GROUP BY 1
-        ORDER BY 1
-    """
-    else:
-        sql += """
+    sql += """
         GROUP BY departamento
         ORDER BY departamento
     """
@@ -167,17 +246,26 @@ def get_evolucao_faturamento(
             SELECT
                 data_referencia,
                 0 AS departamento,
-                SUM(faturamento) AS faturamento,
-                SUM(meta) AS meta,
-                SUM(projecao) AS projecao,
-                AVG(margem) AS margem,
+                'Grupo Solar' AS departamento_nome,
+
+                COALESCE(SUM(faturamento), 0) AS faturamento,
+                COALESCE(SUM(meta), 0) AS meta,
+                COALESCE(SUM(projecao), 0) AS projecao,
+
                 CASE
-                    WHEN SUM(meta) > 0
-                    THEN SUM(faturamento) / SUM(meta) * 100
+                    WHEN COALESCE(SUM(faturamento), 0) > 0
+                    THEN COALESCE(SUM(faturamento * margem), 0) / SUM(faturamento)
+                    ELSE 0
+                END AS margem,
+
+                CASE
+                    WHEN COALESCE(SUM(meta), 0) > 0
+                    THEN COALESCE(SUM(faturamento), 0) / SUM(meta) * 100
                     ELSE 0
                 END AS meta_alcancada,
-                SUM(venda_agora) AS venda_agora,
-                SUM(venda_dia) AS venda_dia
+
+                COALESCE(SUM(venda_agora), 0) AS venda_agora,
+                COALESCE(SUM(venda_dia), 0) AS venda_dia
             FROM fato_resumo_total
             WHERE data_referencia BETWEEN :data_inicio AND :data_fim
             AND departamento IN (1, 5)
@@ -228,21 +316,4 @@ def get_evolucao_faturamento(
 
 
 def get_meta_vs_realizado(data: str, departamento: int | None = None):
-    sql = """
-        SELECT *
-        FROM fato_resumo_total
-        WHERE data_referencia = :data
-    """
-
-    params = {"data": data}
-
-    sql, params = aplicar_filtro_departamento(sql, params, departamento)
-
-    sql += """
-        ORDER BY departamento
-    """
-
-    with engine.connect() as conn:
-        rows = conn.execute(text(sql), params).mappings().all()
-
     return get_resumo_por_data(data=data, departamento=departamento)
