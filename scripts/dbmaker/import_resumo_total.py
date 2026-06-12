@@ -1,14 +1,16 @@
 import os
 from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
 
 # força ambiente DBMaker/ODBC antes do pyodbc conectar
 os.environ["ODBCINI"] = "/etc/odbc.ini"
 os.environ["ODBCSYSINI"] = "/etc"
 os.environ["DBMAKER"] = "/home/dbmaker/5.4"
 os.environ["DM_HOME"] = "/home/dbmaker/5.4"
-os.environ["DB_CLILCODE"] = "0"
-os.environ["DB_SVRCODE"] = "0"
+os.environ["DB_CLILCODE"] = "1"
+os.environ["DB_CLIOCODE"] = "1"
+os.environ["DB_LCODE"] = "1"
 os.environ["LD_LIBRARY_PATH"] = "/home/dbmaker/5.4/lib/so:" + os.environ.get(
     "LD_LIBRARY_PATH", ""
 )
@@ -71,6 +73,16 @@ SELECT
 FROM A_BI037
 """
 
+QUERY_BI062 = """
+SELECT
+    "BI062_IDENTI",
+    "BI062_ATUALIZACAO",
+    "BI062_VLRVENCI",
+    "BI062_REPVENCI",
+    "BI062_VLRPERDA",
+    "BI062_REPPERDA"
+FROM A_BI062
+"""
 
 INSERT_SQL = text("""
     INSERT INTO fato_resumo_total (
@@ -97,6 +109,10 @@ INSERT_SQL = text("""
         juros,
         juros_agora,
         origem_tabela,
+        valor_vencido,
+        percentual_vencido,
+        valor_perda,
+        percentual_perda,
         created_at,
         updated_at
     )
@@ -124,6 +140,10 @@ INSERT_SQL = text("""
         :juros,
         :juros_agora,
         :origem_tabela,
+        :valor_vencido,
+        :percentual_vencido,
+        :valor_perda,
+        :percentual_perda,
         now(),
         now()
     )
@@ -150,6 +170,10 @@ INSERT_SQL = text("""
         juros = EXCLUDED.juros,
         juros_agora = EXCLUDED.juros_agora,
         origem_tabela = EXCLUDED.origem_tabela,
+        valor_vencido = EXCLUDED.valor_vencido,
+        percentual_vencido = EXCLUDED.percentual_vencido,
+        valor_perda = EXCLUDED.valor_perda,
+        percentual_perda = EXCLUDED.percentual_perda,
         updated_at = now()
 """)
 
@@ -158,13 +182,24 @@ def to_decimal(value):
     if value is None:
         return None
 
-    value = str(value).strip()
+    if isinstance(value, Decimal):
+        return value
+
+    value = str(value).strip().replace(" ", "")
 
     if value == "" or value == "-":
         return None
 
+    if "," in value and "." in value:
+        if value.rfind(",") > value.rfind("."):
+            value = value.replace(".", "").replace(",", ".")
+        else:
+            value = value.replace(",", "")
+    elif "," in value:
+        value = value.replace(",", ".")
+
     try:
-        return Decimal(value.replace(",", "."))
+        return Decimal(value)
     except Exception:
         return None
 
@@ -198,23 +233,38 @@ def parse_atualizacao_ts(value):
     if value is None:
         return None
 
+    if isinstance(value, datetime):
+        return value
+
     value = str(value).strip()
 
     if value == "" or value == "-":
         return None
 
-    try:
-        return datetime.strptime(value, "%d/%m/%Y %H:%M:%S")
-    except Exception:
-        return None
+    for formato in ("%d/%m/%Y %H:%M:%S", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.strptime(value, formato)
+        except Exception:
+            pass
+
+    return None
 
 
 def get_value(row: dict, key: str):
     return row.get(key)
 
 
+LOG_FILE = Path(os.getenv("IMPORT_RESUMO_TOTAL_LOG", "logs/import_resumo_total.log"))
+
+
 def log(msg: str):
-    log(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
+    linha = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}"
+
+    print(linha, flush=True)
+
+    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(linha + "\n")
 
 
 def preparar_linha(row, prefixo, departamento, departamento_nome, origem_tabela):
@@ -253,7 +303,66 @@ def preparar_linha(row, prefixo, departamento, departamento_nome, origem_tabela)
         # A_BI037 aparentemente não possui, então ficará None.
         "juros_agora": to_decimal(get_value(row, f"{prefixo}_JUROAGORA")),
         "origem_tabela": origem_tabela,
+        "valor_vencido": None,
+        "percentual_vencido": None,
+        "valor_perda": None,
+        "percentual_perda": None,
     }
+
+
+UPDATE_BI062_SQL = text("""
+    UPDATE fato_resumo_total
+    SET
+        valor_vencido = :valor_vencido,
+        percentual_vencido = :percentual_vencido,
+        valor_perda = :valor_perda,
+        percentual_perda = :percentual_perda,
+        updated_at = now()
+    WHERE departamento = :departamento
+""")
+
+
+def preparar_linha_bi062(row):
+    identi = get_value(row, "BI062_IDENTI")
+
+    if identi is None:
+        return None
+
+    try:
+        departamento = int(identi)
+    except Exception:
+        return None
+
+    return {
+        "departamento": departamento,
+        "valor_vencido": to_decimal(get_value(row, "BI062_VLRVENCI")),
+        "percentual_vencido": to_decimal(get_value(row, "BI062_REPVENCI")),
+        "valor_perda": to_decimal(get_value(row, "BI062_VLRPERDA")),
+        "percentual_perda": to_decimal(get_value(row, "BI062_REPPERDA")),
+    }
+
+
+def importar_bi062(conn):
+    log("Buscando dados: A_BI062")
+
+    rows = buscar_dados_dbmaker(QUERY_BI062)
+    log(f"Linhas encontradas: {len(rows)}")
+
+    total_lidos = len(rows)
+    total_importados = 0
+    total_ignorados = 0
+
+    for row in rows:
+        dados = preparar_linha_bi062(row)
+
+        if dados is None:
+            total_ignorados += 1
+            continue
+
+        conn.execute(UPDATE_BI062_SQL, dados)
+        total_importados += 1
+
+    return total_lidos, total_importados, total_ignorados
 
 
 def conectar_dbmaker():
@@ -373,6 +482,12 @@ def importar_resumo_total():
 
                 conn.execute(INSERT_SQL, dados)
                 total_importados += 1
+
+        bi062_lidos, bi062_importados, bi062_ignorados = importar_bi062(conn)
+
+        total_lidos += bi062_lidos
+        total_importados += bi062_importados
+        total_ignorados += bi062_ignorados
 
     log("Importação concluída.")
     log(f"Total lidos: {total_lidos}")

@@ -1,0 +1,62 @@
+Sem problemas. Pelo que estávamos construindo, o projeto do Chatbot Grupo Solar já havia avançado bastante antes da pausa:
+
+* ✅ FastAPI + Next.js funcionando
+* ✅ PostgreSQL + pgvector configurados
+* ✅ Ollama com Gemma 3 integrado
+* ✅ Parser híbrido (regras + embeddings)
+* ✅ Seleção de departamento (Grupo, Lojas, Naturovos)
+* ✅ Contexto por `session_id`
+* ✅ Geração de relatórios e imagens
+* ✅ Estrutura Docker em `/opt/chatbot`
+* ✅ ETL migrando para `fato_resumo_total`
+
+Antes da interrupção, os principais pontos que ainda precisavam de refinamento eram:
+
+1. **Persistência de contexto**
+
+   * Salvar e recuperar contexto das conversas no PostgreSQL.
+   * Evitar perda de contexto após reiniciar containers.
+
+2. **Agregação do Grupo Solar**
+
+   * Garantir que o departamento `0` (Grupo) some corretamente os departamentos `1` e `5`.
+   * Validar cálculos de meta, faturamento, margem e projeção.
+
+3. **Fluxo conversacional**
+
+   * Manter o departamento selecionado para perguntas seguintes.
+   * Exemplo:
+
+     * "Faturamento hoje"
+     * Usuário escolhe "Lojas"
+     * Depois pergunta "e ontem?"
+     * O chatbot já entende que continua falando de Lojas.
+
+4. **Aprendizado e auditoria**
+
+   * Registrar perguntas sem resposta.
+   * Dashboard de intents mais utilizadas.
+   * Ajustar embeddings para melhorar a classificação.
+
+5. **WhatsApp**
+
+   * Melhorar experiência dos botões.
+   * Adaptar para respostas numéricas quando o canal não suportar botões.
+
+Eu sugeriria retomarmos por uma destas frentes:
+
+### Opção A — Finalizar o núcleo do chatbot
+
+Concluir contexto persistente, memória de conversa e agregações. Isso deixa a IA pronta para produção.
+
+### Opção B — Melhorar a inteligência
+
+Adicionar histórico conversacional, RAG mais avançado, exemplos de perguntas e autoaprendizado.
+
+### Opção C — WhatsApp e produção
+
+Focar em integração, estabilidade, monitoramento, backups e experiência do usuário final.
+
+Pelo estágio em que paramos, eu seguiria pela **Opção A**, porque ela resolve a maioria dos comportamentos estranhos que ainda apareciam nas conversas e cria uma base sólida para as próximas etapas.
+
+Se você me mostrar o estado atual do projeto (arquivos ou os últimos ajustes que ficaram pendentes), consigo montar um plano exato para retomarmos sem perder tempo revisando tudo novamente.

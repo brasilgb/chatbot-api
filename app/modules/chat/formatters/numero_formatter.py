@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import datetime, date
 
 
 def formatar_moeda(valor) -> str:
@@ -23,3 +24,19 @@ def formatar_percentual(valor) -> str:
     texto = texto.replace(",", "X").replace(".", ",").replace("X", ".")
 
     return f"{texto}%"
+
+
+def formatar_data(valor) -> str:
+    if valor is None:
+        return ""
+
+    if isinstance(valor, datetime):
+        return valor.strftime("%d/%m/%Y")
+
+    if isinstance(valor, date):
+        return valor.strftime("%d/%m/%Y")
+
+    try:
+        return datetime.strptime(str(valor), "%Y-%m-%d").strftime("%d/%m/%Y")
+    except Exception:
+        return str(valor)

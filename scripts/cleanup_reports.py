@@ -1,12 +1,13 @@
 import os
 import time
+from datetime import datetime
 
 PASTA = "storage/reports"
 TEMPO_LIMITE = 60 * 60  # 1 hora
 
 
 def log(msg: str):
-    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
 
 def limpar_imagens_antigas():

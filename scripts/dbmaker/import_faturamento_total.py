@@ -10,6 +10,10 @@ os.environ["ODBCINI"] = "/etc/odbc.ini"
 os.environ["ODBCSYSINI"] = "/etc"
 os.environ["DBMAKER"] = "/home/dbmaker/5.4"
 os.environ["DM_HOME"] = "/home/dbmaker/5.4"
+os.environ["DB_CLILCODE"] = "1"
+os.environ["DB_CLIOCODE"] = "1"
+os.environ["DB_LCODE"] = "1"
+os.environ["DB_CODEPAGE"] = "latin1"
 os.environ["LD_LIBRARY_PATH"] = "/home/dbmaker/5.4/lib/so:" + os.environ.get(
     "LD_LIBRARY_PATH", ""
 )
@@ -42,19 +46,28 @@ def parse_data_chave(valor):
     return datetime.strptime(valor, "%Y%m%d").date()
 
 
+LOG_FILE = "/app/logs/import_faturamento_total.log"
+
 def log(msg: str):
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
+    linha = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}"
+
+    print(linha, flush=True)
+
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(linha + "\n")
 
 
 def validate_config():
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL nao configurada.")
 
+
 def parse_atualizacao(valor):
     if valor is None:
         return None
 
     return str(valor).strip()
+
 
 def conectar_dbmaker():
     """

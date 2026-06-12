@@ -2,7 +2,20 @@ import os
 import sys
 import time
 from contextlib import closing
-from datetime import date, datetime
+from decimal import Decimal
+from datetime import datetime
+
+# força ambiente DBMaker/ODBC antes do pyodbc conectar
+os.environ["ODBCINI"] = "/etc/odbc.ini"
+os.environ["ODBCSYSINI"] = "/etc"
+os.environ["DBMAKER"] = "/home/dbmaker/5.4"
+os.environ["DM_HOME"] = "/home/dbmaker/5.4"
+os.environ["DB_CLILCODE"] = "1"
+os.environ["DB_CLIOCODE"] = "1"
+os.environ["DB_LCODE"] = "1"
+os.environ["LD_LIBRARY_PATH"] = "/home/dbmaker/5.4/lib/so:" + os.environ.get(
+    "LD_LIBRARY_PATH", ""
+)
 
 import pyodbc
 import psycopg
@@ -109,7 +122,7 @@ if IMPORT_DEPARTMENT:
 
 
 def log(msg: str):
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
 
 def parse_dbmaker_date(value) -> date:

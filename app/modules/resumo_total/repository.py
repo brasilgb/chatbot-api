@@ -1,7 +1,6 @@
 from sqlalchemy import text
 from app.core.database import engine
 
-
 DEPARTAMENTOS_GRUPO = (1, 5)
 
 
@@ -24,6 +23,23 @@ def aplicar_filtro_departamento(sql: str, params: dict, departamento: int | None
     params["departamento"] = departamento
 
     return sql, params
+
+
+def get_ultima_data_disponivel(departamento: int | None = None):
+    sql = """
+        SELECT MAX(data_referencia) AS data_referencia
+        FROM fato_resumo_total
+        WHERE 1=1
+    """
+
+    params = {}
+
+    sql, params = aplicar_filtro_departamento(sql, params, departamento)
+
+    with engine.connect() as conn:
+        row = conn.execute(text(sql), params).mappings().first()
+
+    return row["data_referencia"] if row and row["data_referencia"] else None
 
 
 def get_ultimo_resumo(departamento: int | None = None):
@@ -69,6 +85,12 @@ def get_ultimo_resumo(departamento: int | None = None):
 
 
 def get_resumo_por_data(data: str, departamento: int | None = None):
+
+    ultima_data = get_ultima_data_disponivel(departamento)
+
+    if ultima_data and str(ultima_data) < str(data):
+        data = ultima_data
+
     if departamento == 0:
         sql = """
             SELECT
@@ -92,7 +114,7 @@ def get_resumo_por_data(data: str, departamento: int | None = None):
 
                 CASE
                     WHEN COALESCE(SUM(meta), 0) > 0
-                    THEN COALESCE(SUM(faturamento), 0) / SUM(meta) * 100
+                    THEN COALESCE(SUM(faturamento), 0) / SUM(meta)
                     ELSE 0
                 END AS meta_alcancada
             FROM fato_resumo_total
@@ -164,7 +186,7 @@ def get_resumo_periodo(
 
                 CASE
                     WHEN COALESCE(SUM(meta), 0) > 0
-                    THEN COALESCE(SUM(faturamento), 0) / SUM(meta) * 100
+                    THEN COALESCE(SUM(faturamento), 0) / SUM(meta)
                     ELSE 0
                 END AS meta_alcancada
             FROM fato_resumo_total
@@ -211,7 +233,7 @@ def get_resumo_periodo(
 
             CASE
                 WHEN COALESCE(SUM(meta), 0) > 0
-                THEN COALESCE(SUM(faturamento), 0) / SUM(meta) * 100
+                THEN COALESCE(SUM(faturamento), 0) / SUM(meta)
                 ELSE 0
             END AS meta_alcancada
         FROM fato_resumo_total
@@ -260,7 +282,7 @@ def get_evolucao_faturamento(
 
                 CASE
                     WHEN COALESCE(SUM(meta), 0) > 0
-                    THEN COALESCE(SUM(faturamento), 0) / SUM(meta) * 100
+                    THEN COALESCE(SUM(faturamento), 0) / SUM(meta)
                     ELSE 0
                 END AS meta_alcancada,
 

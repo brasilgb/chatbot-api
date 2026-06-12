@@ -1,7 +1,6 @@
 from app.modules.resumo_total.service import (
     buscar_ultimo_resumo,
     buscar_resumo_por_data,
-    buscar_resumo_periodo,
     buscar_evolucao_faturamento,
     buscar_meta_vs_realizado,
 )
@@ -10,6 +9,10 @@ from app.modules.chat.formatters.resumo_total_formatter import (
     formatar_resumo_total,
 )
 
+from app.modules.chat.formatters.numero_formatter import (
+    formatar_moeda,
+    formatar_data,
+)
 
 def responder_resumo_total(intent: dict) -> str:
     tipo = intent.get("tipo")
@@ -32,9 +35,9 @@ def responder_resumo_total(intent: dict) -> str:
 
         for item in dados:
             linhas.append(
-                f"{item.get('data_referencia')} - "
+                f"{formatar_data(item.get('data_referencia'))} - "
                 f"Depto {item.get('departamento')}: "
-                f"R$ {item.get('faturamento')}"
+                f"{formatar_moeda(item.get('faturamento'))}"
             )
 
         return "\n".join(linhas)
@@ -65,4 +68,8 @@ def responder_resumo_total(intent: dict) -> str:
             return "\n\n---\n\n".join(respostas)
 
     dados = buscar_ultimo_resumo(departamento=departamento)
+
+    if not dados:
+        return "Não encontrei dados de resumo total."
+
     return formatar_resumo_total(dados)
