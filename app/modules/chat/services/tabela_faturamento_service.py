@@ -45,17 +45,17 @@ def eh_naturovos(departamento):
 def montar_linha_base(item: dict, campo_nome: str, departamento: int | None):
     linha = {
         campo_nome: item.get(campo_nome),
-        "faturamento": formatar_moeda(item.get("faturamento")),
-        "rep_faturamento": formatar_percentual(item.get("rep_faturamento")),
-        "projecao": formatar_percentual(item.get("projecao")),
-        "margem": formatar_percentual(item.get("margem")),
-        "meta": formatar_percentual(item.get("meta_alcancada")),
+        "faturamento": item.get("faturamento"),
+        "rep_faturamento": item.get("rep_faturamento"),
+        "projecao": item.get("projecao"),
+        "margem": item.get("margem"),
+        "meta_alcancada": item.get("meta_alcancada"),
     }
 
     if eh_naturovos(departamento):
-        linha["preco_medio"] = formatar_decimal(item.get("preco_medio"))
+        linha["preco_medio"] = item.get("preco_medio")
     else:
-        linha["juros"] = formatar_percentual(item.get("juros"))
+        linha["juros"] = item.get("juros")
 
     return linha
 
@@ -75,10 +75,10 @@ def gerar_tabela_filiais(intent: dict) -> dict:
     ]
 
     if eh_naturovos(departamento):
-        colunas = ["filial", "faturamento", "rep_faturamento", "projecao", "margem", "meta", "preco_medio"]
+        colunas = ["filial", "faturamento", "rep_faturamento", "projecao", "margem", "meta_alcancada", "preco_medio"]
         nomes = ["Filial", "Faturamento", "Rep. Fat.", "Projeção", "Margem", "Meta", "Preço Médio"]
     else:
-        colunas = ["filial", "faturamento", "rep_faturamento", "projecao", "margem", "meta", "juros"]
+        colunas = ["filial", "faturamento", "rep_faturamento", "projecao", "margem", "meta_alcancada", "juros"]
         nomes = ["Filial", "Faturamento", "Rep. Fat.", "Projeção", "Margem", "Meta", "Juros"]
 
     imagem_url = gerar_imagem_tabela(
@@ -87,6 +87,7 @@ def gerar_tabela_filiais(intent: dict) -> dict:
         colunas=colunas,
         nomes_colunas=nomes,
         nome_base="tabela_filiais",
+        limite=None
     )
 
     return {
@@ -112,10 +113,10 @@ def gerar_tabela_associacoes(intent: dict) -> dict:
     ]
 
     if eh_naturovos(departamento):
-        colunas = ["associacao", "faturamento", "rep_faturamento", "projecao", "margem", "meta", "preco_medio"]
+        colunas = ["associacao", "faturamento", "rep_faturamento", "projecao", "margem", "meta_alcancada", "preco_medio"]
         nomes = ["Associação", "Faturamento", "Rep. Fat.", "Projeção", "Margem", "Meta", "Preço Médio"]
     else:
-        colunas = ["associacao", "faturamento", "rep_faturamento", "projecao", "margem", "meta", "juros"]
+        colunas = ["associacao", "faturamento", "rep_faturamento", "projecao", "margem", "meta_alcancada", "juros"]
         nomes = ["Associação", "Faturamento", "Rep. Fat.", "Projeção", "Margem", "Meta", "Juros"]
 
     imagem_url = gerar_imagem_tabela(
@@ -124,6 +125,7 @@ def gerar_tabela_associacoes(intent: dict) -> dict:
         colunas=colunas,
         nomes_colunas=nomes,
         nome_base="tabela_associacoes",
+        limite=None
     )
 
     return {

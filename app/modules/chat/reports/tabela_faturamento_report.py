@@ -1,5 +1,4 @@
 import os
-from datetime import datetime
 import matplotlib.pyplot as plt
 
 from app.modules.chat.formatters.numero_formatter import formatar_moeda, formatar_percentual
@@ -49,7 +48,7 @@ def gerar_png_tabela_faturamento(
         "",
     ])
 
-    colunas = ["#", "Nome", "Faturamento", "Ticket Médio", "Margem"]
+    colunas = ["#", "Nome", "Faturamento", "Ticket Médio Blá", "Margem"]
 
     altura = max(4, len(linhas) * 0.45 + 1.8)
 
@@ -86,8 +85,7 @@ def gerar_png_tabela_faturamento(
         if col == 1 and row > 0:
             cell.set_text_props(ha="left")
 
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    filename = f"tabela_{tipo_nome}_{timestamp}.png"
+    filename = f"tabela_{tipo_nome}.png"
     filepath = os.path.join(REPORT_DIR, filename)
 
     plt.tight_layout()

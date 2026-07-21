@@ -55,6 +55,8 @@ def detectar_faturamento_tabelas(texto: str) -> dict | None:
         p in texto
         for p in [
             "filiais",
+            "ranking de filial",
+            "ranking de filiais",
             "faturamento de filiais",
             "faturamento por filial",
             "faturamento por filiais",
@@ -75,6 +77,14 @@ def detectar_faturamento_tabelas(texto: str) -> dict | None:
         for p in [
             "associações",
             "associacoes",
+            "ranking de associação",
+            "ranking de associacao",
+            "ranking de associações",
+            "ranking de associacoes",
+            "ranking por associação",
+            "ranking por associacao",
+            "ranking por associações",
+            "ranking por associacoes",
             "faturamento de associações",
             "faturamento de associacoes",
             "faturamento por associação",

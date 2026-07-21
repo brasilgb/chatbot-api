@@ -1,9 +1,9 @@
 #!/bin/bash
+set -euo pipefail
 
-cd /home/ia/projects/chatbot-api || exit 1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-source .venv/bin/activate
-source scripts/dbmaker/env_dbmaker.sh
-
-python scripts/dbmaker/import_faturamento_total.py >> logs/import_faturamento_total.log 2>&1
-python scripts/dbmaker/import_resumo_total.py >> logs/import_resumo_total.log 2>&1
+exec "$SCRIPT_DIR/run_imports_via_docker.sh" \
+    import_faturamento_detalhado.py \
+    import_faturamento_total.py \
+    import_resumo_total.py

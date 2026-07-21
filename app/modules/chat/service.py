@@ -14,13 +14,10 @@ from app.modules.chat.repositories.chat_context_repository import (
     buscar_ultimo_contexto,
 )
 
-from app.modules.chat.repositories.faturamento_detalhado_repository import (
-    buscar_faturamento_por_associacao,
-    buscar_faturamento_por_filial,
-)
-
-from app.modules.chat.reports.tabela_faturamento_report import (
-    gerar_png_tabela_faturamento,
+from app.modules.chat.services.tabela_faturamento_service import (
+    gerar_tabela_filiais,
+    gerar_tabela_associacoes,
+    buscar_resumo_departamento,
 )
 
 
@@ -239,51 +236,11 @@ def resolver_selecao_pendente(message: str, session_id: str = "default"):
 
 
 def responder_faturamento_filiais(intent: dict) -> dict:
-    dados = buscar_faturamento_por_filial(
-        intent.get("data_inicio"),
-        intent.get("data_fim"),
-        intent.get("departamento"),
-    )
-
-    image_url = gerar_png_tabela_faturamento(
-        dados=dados,
-        titulo="Faturamento de Filiais",
-        data_inicio=intent.get("data_inicio"),
-        data_fim=intent.get("data_fim"),
-        tipo_nome="filial",
-    )
-
-    return {
-        "success": True,
-        "answer": "📊 Faturamento de Filiais",
-        "image_url": image_url,
-        "image_path": image_url,
-        "intent": intent,
-    }
+    return gerar_tabela_filiais(intent)
 
 
 def responder_faturamento_associacoes(intent: dict) -> dict:
-    dados = buscar_faturamento_por_associacao(
-        intent.get("data_inicio"),
-        intent.get("data_fim"),
-        intent.get("departamento"),
-    )
-
-    image_url = gerar_png_tabela_faturamento(
-        dados=dados,
-        titulo="Faturamento de Associações",
-        data_inicio=intent.get("data_inicio"),
-        data_fim=intent.get("data_fim"),
-        tipo_nome="associacao",
-    )
-
-    return {
-        "success": True,
-        "answer": "📊 Faturamento de Associações",
-        "image_url": image_url,
-        "image_path": image_url,
-        "intent": intent,
-    }
+    return gerar_tabela_associacoes(intent)
 
 
 def responder_com_intent(intent: dict) -> dict:
@@ -447,7 +404,7 @@ def processar_chat(message: str, session_id: str | None = None):
                 "• Margem\n"
                 "• Evolução\n"
                 "• Faturamento de filiais\n"
-                "• Faturamento de associações"
+                "• Faturamento por associação"
             ),
             "intent": None,
         }

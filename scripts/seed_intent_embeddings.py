@@ -44,8 +44,35 @@ INTENTS = [
     {
         "pergunta": "me mostre o faturamento por filial das lojas ontem",
         "intent": {
-            "modulo": "resumo_total",
-            "tipo": "filiais",
+            "modulo": "faturamento_filiais",
+            "tipo": "faturamento_filial",
+            "departamento": 1,
+            "departamento_nome": "lojas",
+        },
+    },
+    {
+        "pergunta": "ranking de filiais das lojas ontem",
+        "intent": {
+            "modulo": "faturamento_filiais",
+            "tipo": "faturamento_filial",
+            "departamento": 1,
+            "departamento_nome": "lojas",
+        },
+    },
+    {
+        "pergunta": "ranking por associações das lojas ontem",
+        "intent": {
+            "modulo": "faturamento_associacoes",
+            "tipo": "faturamento_associacao",
+            "departamento": 1,
+            "departamento_nome": "lojas",
+        },
+    },
+    {
+        "pergunta": "faturamento por associação das lojas ontem",
+        "intent": {
+            "modulo": "faturamento_associacoes",
+            "tipo": "faturamento_associacao",
             "departamento": 1,
             "departamento_nome": "lojas",
         },
@@ -127,8 +154,35 @@ INTENTS = [
     {
         "pergunta": "faturamento por filial da naturovos",
         "intent": {
-            "modulo": "resumo_total",
-            "tipo": "filiais",
+            "modulo": "faturamento_filiais",
+            "tipo": "faturamento_filial",
+            "departamento": 5,
+            "departamento_nome": "naturovos",
+        },
+    },
+    {
+        "pergunta": "ranking de filiais da naturovos",
+        "intent": {
+            "modulo": "faturamento_filiais",
+            "tipo": "faturamento_filial",
+            "departamento": 5,
+            "departamento_nome": "naturovos",
+        },
+    },
+    {
+        "pergunta": "ranking por associações da naturovos",
+        "intent": {
+            "modulo": "faturamento_associacoes",
+            "tipo": "faturamento_associacao",
+            "departamento": 5,
+            "departamento_nome": "naturovos",
+        },
+    },
+    {
+        "pergunta": "faturamento por associação da naturovos",
+        "intent": {
+            "modulo": "faturamento_associacoes",
+            "tipo": "faturamento_associacao",
             "departamento": 5,
             "departamento_nome": "naturovos",
         },

@@ -29,7 +29,7 @@ def buscar_faturamento_por_associacao(data_inicio, data_fim, departamento=None, 
         params["departamento"] = departamento
 
     sql += """
-        ORDER BY associacao
+        ORDER BY faturamento DESC
         LIMIT :limite
     """
 
@@ -66,7 +66,7 @@ def buscar_faturamento_por_filial(data_inicio, data_fim, departamento=None, limi
         params["departamento"] = departamento
 
     sql += """
-        ORDER BY filial
+        ORDER BY faturamento DESC
         LIMIT :limite
     """
 
